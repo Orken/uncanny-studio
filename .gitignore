@@ -1,0 +1,10 @@
+.idea/
+node_modules/
+dist/
+.angular/
+coverage/
+storage/
+*.log
+.DS_Store
+
+*:Zone.Identifier

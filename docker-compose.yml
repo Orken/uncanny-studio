@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      STORAGE_DIR: /app/storage
+      MAX_UPLOAD_MB: 250
+    volumes:
+      - uncanny-storage:/app/storage
+volumes:
+  uncanny-storage:
+

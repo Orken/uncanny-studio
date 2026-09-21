@@ -1,0 +1,87 @@
+<header>
+  <a class="brand" href="/" [attr.aria-label]="t('brand.home')"><span class="brand-mark">U</span><span>UNCANNY<br><b>STUDIO</b></span></a>
+  <div class="header-side">
+    <span class="engine"><i></i> FFmpeg engine</span>
+    <div class="lang" role="group" [attr.aria-label]="t('lang.label')">
+      @for (lang of languages; track lang) {
+        <button type="button" [class.active]="i18n.lang() === lang" [attr.aria-pressed]="i18n.lang() === lang" (click)="i18n.use(lang)">{{ lang.toUpperCase() }}</button>
+      }
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <p class="eyebrow">VIDEO TRANSFORMER / 01</p>
+    <h1>Make it feel<br><em>wrong.</em></h1>
+    <p class="intro">{{ t('intro') }}</p>
+  </section>
+
+  <section class="workspace">
+    @if (!file()) {
+      <label class="dropzone" [class.dragging]="dragging()" (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
+        <input type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" (change)="choose($event)">
+        <span class="scan"></span>
+        <span class="upload-icon">↑</span>
+        <strong>{{ t('drop.title') }}</strong>
+        <span>{{ t('drop.browse') }}</span>
+        <small>{{ t('drop.limits', limits) }}</small>
+      </label>
+    } @else {
+      <div class="editor">
+        <div class="preview">
+          <video [src]="previewUrl()" preload="metadata" (loadedmetadata)="readDuration($event)" (error)="metadataError($event)" controls playsinline></video>
+          <div class="file-meta">
+            <span>{{ file()!.name }}@if (videoDuration()) { · {{ t('summary.video', { duration: n(videoDuration()) }) }} }</span>
+            <b>{{ t('file.size', { size: n(file()!.size / 1048576, 1, 1) }) }}</b>
+          </div>
+          @if (videoDuration()) {
+            <p class="timing-summary" aria-live="polite">{{ t('summary.phases', { normal: start, transition: duration, solarized: solarizedDuration }) }}</p>
+          } @else if (!error()) {
+            <p class="timing-summary">{{ t('summary.reading') }}</p>
+          }
+        </div>
+
+        <div class="controls">
+          <div class="control-head"><span>{{ t('controls.title') }}</span><button type="button" (click)="reset()">{{ t('controls.reset') }}</button></div>
+          <label><span>{{ t('controls.start') }} <output>{{ n(start) }} s</output></span><input type="range" min="0" [max]="videoDuration() - minimumTransition" step="any" [ngModel]="start" (ngModelChange)="changeStart($event)" [disabled]="!!job() || !durationAccepted"></label>
+          <label><span>{{ t('controls.transition') }} <output>{{ n(duration) }} s</output></span><input type="range" [min]="minimumTransition" [max]="videoDuration() - start" step="any" [(ngModel)]="duration" [disabled]="!!job() || !durationAccepted"></label>
+          <label><span>{{ t('controls.intensity') }} <output>{{ intensity }}%</output></span><input type="range" min="0" max="100" step="1" [(ngModel)]="intensity" [disabled]="!!job()"></label>
+          <fieldset class="music" [disabled]="!!job()" aria-labelledby="music-title">
+            <span class="music-head"><span id="music-title">{{ t('music.title') }}</span>@if (music !== 'none' && durationAccepted) { <output>{{ t('music.fade', { seconds: n(musicFade, 1) }) }}</output> }</span>
+            <div class="segmented">
+              @for (mode of musicModes; track mode.value) {
+                <label><input type="radio" name="music" [value]="mode.value" [(ngModel)]="music"><span>{{ t(mode.label) }}</span></label>
+              }
+            </div>
+          </fieldset>
+
+          @if (!job()) {
+            <button class="render" type="button" (click)="render()" [disabled]="!durationAccepted"><span>{{ t('render.start') }}</span><b>→</b></button>
+          } @else if (job()!.status === 'queued' || job()!.status === 'processing') {
+            <div class="progress-block"><span><b>{{ t('render.processing') }}</b><output>{{ job()!.progress }}%</output></span><div class="progress"><i [style.width.%]="job()!.progress"></i></div><small>{{ t('render.hint') }}</small></div>
+          } @else {
+            <div class="render-actions" [class.failed]="job()!.status === 'failed'">
+              @if (job()!.status === 'completed') {
+                <a class="render done" [href]="job()!.downloadUrl"><span>{{ t('render.download') }}</span><b>↓</b></a>
+              } @else {
+                <p class="error">{{ t('render.failed') }}@if (job()!.error) {<small class="error-detail">{{ job()!.error }}</small>}</p>
+              }
+              <button class="render again" type="button" (click)="newRender()"><span>{{ t('render.again') }}</span><b>↻</b></button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+    @if (error(); as message) { <p class="error global">{{ i18n.describe(message) }}</p> }
+    @if (uploadProgress() > 0 && !job()) { <div class="uploading">{{ t('upload.progress', { percent: uploadProgress() }) }}</div> }
+  </section>
+
+  <section class="steps" [attr.aria-label]="t('steps.label')">
+    <article><b>01</b><span>DRAIN</span><p>{{ t('steps.drain') }}</p></article>
+    <article><b>02</b><span>DRIFT</span><p>{{ t('steps.drift') }}</p></article>
+    <article><b>03</b><span>SOLARIZE</span><p>{{ t('steps.solarize') }}</p></article>
+  </section>
+</main>
+
+<footer><span>SERVER-SIDE FFMPEG RENDERING</span><span>ANGULAR × NESTJS × FFMPEG</span></footer>

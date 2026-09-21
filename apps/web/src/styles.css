@@ -1,0 +1,2 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;600;700;800&display=swap');
+:root{--bg:#09090b;--text:#ecece8;--muted:#8a8a91;--line:#29292e;--acid:#d6ff3f;--mono:'DM Mono',monospace;font-family:Inter,Arial,sans-serif;color:var(--text);background:var(--bg);font-synthesis:none}*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;min-width:320px;background:radial-gradient(circle at 75% 8%,#1b1d1422,transparent 32%),var(--bg)}button,input{font:inherit}

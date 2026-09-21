@@ -1,0 +1,8 @@
+node_modules
+dist
+.angular
+storage
+.git
+
+apps/api/src/*.mp4
+*:Zone.Identifier
