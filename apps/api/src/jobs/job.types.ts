@@ -9,6 +9,8 @@ export interface VideoJob {
   progress: number;
   createdAt: string;
   error?: string;
+  /** Aborts the running FFmpeg process (job deleted while rendering). */
+  abort?: AbortController;
 }
 
 export interface PublicJob {
@@ -16,6 +18,8 @@ export interface PublicJob {
   originalName: string;
   status: JobStatus;
   progress: number;
+  /** 1-based rank while waiting for a render slot. */
+  queuePosition?: number;
   createdAt: string;
   error?: string;
   downloadUrl?: string;

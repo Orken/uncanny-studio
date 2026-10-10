@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { CreateJobDto } from './create-job.dto';
 import { PublicJob, VideoJob } from './job.types';
 import { buildUncannyFilter, parseProbe, UncannyOptions, VideoInfo } from './uncanny-filter';
+import { RenderQueue } from './render-queue';
 import { fitTimings } from './video-limits';
 
 @Injectable()
@@ -13,6 +14,14 @@ export class JobsService {
   private readonly jobs = new Map<string, VideoJob>();
   private readonly storageDir = process.env.STORAGE_DIR ?? join(process.cwd(), 'storage');
   private readonly musicPath = process.env.MUSIC_PATH ?? join(process.cwd(), 'assets', 'music.m4a');
+
+  private readonly renderTimeoutMs = Number(process.env.RENDER_TIMEOUT_MINUTES ?? 30) * 60 * 1000;
+  private readonly probeTimeoutMs = 30 * 1000;
+  private readonly pending = new Map<string, { options: UncannyOptions; info: VideoInfo }>();
+  private readonly queue = new RenderQueue(
+    Math.max(1, Number(process.env.MAX_CONCURRENT_RENDERS ?? 1)),
+    async id => { const job = this.jobs.get(id); const task = this.pending.get(id); this.pending.delete(id); if (job && task) await this.process(job, task.options, task.info); },
+  );
 
   constructor() {
     setInterval(() => this.cleanup(), 60 * 60 * 1000).unref();
@@ -32,7 +41,8 @@ export class JobsService {
       status: 'queued', progress: 0, createdAt: new Date().toISOString(),
     };
     this.jobs.set(id, job);
-    void this.process(job, { ...timings, intensity: dto.intensity / 100, music: dto.music }, info);
+    this.pending.set(id, { options: { ...timings, intensity: dto.intensity / 100, music: dto.music }, info });
+    this.queue.enqueue(id);
     return this.toPublic(job);
   }
 
@@ -46,6 +56,9 @@ export class JobsService {
 
   remove(id: string) {
     const job = this.get(id);
+    this.queue.cancel(id);
+    this.pending.delete(id);
+    job.abort?.abort();
     for (const path of [job.inputPath, job.outputPath]) unlink(path, () => undefined);
     this.jobs.delete(id);
     return { deleted: true };
@@ -61,30 +74,35 @@ export class JobsService {
     return {
       id: job.id, originalName: job.originalName, status: job.status,
       progress: job.progress, createdAt: job.createdAt, error: job.error,
+      ...(job.status === 'queued' ? { queuePosition: this.queue.position(job.id) } : {}),
       ...(job.status === 'completed' ? { downloadUrl: `/api/jobs/${job.id}/download` } : {}),
     };
   }
 
   private async process(job: VideoJob, options: UncannyOptions, info: VideoInfo) {
     job.status = 'processing';
+    job.abort = new AbortController();
     try {
       const graph = buildUncannyFilter(options, info);
       const music = options.music !== 'none' ? ['-stream_loop', '-1', '-i', this.musicPath] : [];
       const audio = graph.audio.length ? [...graph.audio.flatMap(label => ['-map', label]), '-c:a', 'aac', '-b:a', '192k'] : [];
       const args = ['-y', '-i', job.inputPath, ...music, '-filter_complex', graph.filter, '-map', '[v]', ...audio, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-movflags', '+faststart', '-progress', 'pipe:2', '-nostats', job.outputPath];
-      await this.runFfmpeg(args, (seconds) => job.progress = Math.min(99, Math.round(seconds / info.duration * 100)));
+      await this.runFfmpeg(args, job.abort.signal, (seconds) => job.progress = Math.min(99, Math.round(seconds / info.duration * 100)));
       job.status = 'completed'; job.progress = 100;
       unlink(job.inputPath, () => undefined);
     } catch (error) {
       job.status = 'failed';
       job.error = error instanceof Error ? error.message : 'FFmpeg error';
+      unlink(job.outputPath, () => undefined); // partial output (failure, timeout or deletion)
+    } finally {
+      job.abort = undefined;
     }
   }
 
   private probe(path: string): Promise<VideoInfo> {
     return new Promise((resolve, reject) => {
       const entries = 'format=duration:stream=codec_type,width,height,avg_frame_rate,r_frame_rate:stream_side_data=rotation:stream_tags=rotate';
-      const child = spawn('ffprobe', ['-v', 'error', '-show_entries', entries, '-of', 'json', path]);
+      const child = spawn('ffprobe', ['-v', 'error', '-show_entries', entries, '-of', 'json', path], { timeout: this.probeTimeoutMs });
       let output = ''; child.stdout.on('data', chunk => output += chunk);
       child.on('error', reject);
       child.on('close', code => {
@@ -97,9 +115,9 @@ export class JobsService {
     });
   }
 
-  private runFfmpeg(args: string[], onProgress: (seconds: number) => void): Promise<void> {
+  private runFfmpeg(args: string[], signal: AbortSignal, onProgress: (seconds: number) => void): Promise<void> {
     return new Promise((resolve, reject) => {
-      const child = spawn('ffmpeg', args);
+      const child = spawn('ffmpeg', args, { signal, timeout: this.renderTimeoutMs });
       let stderr = '';
       child.stderr.on('data', chunk => {
         const text = chunk.toString(); stderr = (stderr + text).slice(-4000);
@@ -107,7 +125,7 @@ export class JobsService {
         if (match) onProgress(Number(match[1]) / 1_000_000);
       });
       child.on('error', reject);
-      child.on('close', code => code === 0 ? resolve() : reject(new Error(`FFmpeg failed (${code}): ${stderr.slice(-600)}`)));
+      child.on('close', (code, killed) => code === 0 ? resolve() : reject(new Error(killed ? `FFmpeg stopped (${killed}): timeout or cancelled` : `FFmpeg failed (${code}): ${stderr.slice(-600)}`)));
     });
   }
 
