@@ -124,6 +124,7 @@ export class AppComponent implements OnDestroy {
 
   /** Translates the API's error codes; other errors (e.g. ValidationPipe, which sends an array) are shown as is. */
   private apiError(err: HttpErrorResponse): Message {
+    if (err.status === 429) return { key: 'error.rate_limited' };
     const { code, params, message } = err.error ?? {};
     const key = `error.${code}`;
     if (code && this.i18n.has(key)) return { key, params };

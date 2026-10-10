@@ -39,6 +39,7 @@ const fr = {
   'error.not_video': 'Choisis un fichier vidéo.',
   'error.metadata': 'Impossible de lire la durée de cette vidéo. Essaie un autre fichier ou un format lisible par le navigateur.',
   'error.upload': 'Impossible d’envoyer la vidéo.',
+  'error.rate_limited': 'Trop de requêtes. Réessaie dans un moment.',
   'error.polling': 'Le suivi du rendu a été interrompu.',
   // Codes returned by the API (see apps/api/src/jobs).
   'error.video_duration': 'La vidéo doit durer entre {min} et {max} s (celle-ci dure {duration} s).',
@@ -86,6 +87,7 @@ const en: Record<MessageKey, string> = {
   'error.not_video': 'Please choose a video file.',
   'error.metadata': 'Could not read this video’s duration. Try another file or a format your browser can play.',
   'error.upload': 'Could not upload the video.',
+  'error.rate_limited': 'Too many requests. Try again in a moment.',
   'error.polling': 'Lost track of the render.',
   'error.video_duration': 'The video must be between {min} and {max} s long (this one is {duration} s).',
   'error.effect_too_late': 'The effect must start at least {min} s before the end of the video.',

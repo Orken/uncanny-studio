@@ -1,6 +1,7 @@
 import { ArgumentsHost, BadRequestException, Body, Catch, Controller, Delete, Get, Param, Post, Res, UploadedFile, UseFilters, UseInterceptors } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'node:path';
@@ -8,6 +9,9 @@ import { mkdirSync, unlink } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { CreateJobDto } from './create-job.dto';
 import { JobsService } from './jobs.service';
+
+/** Uploads start an FFmpeg render: much stricter than the global limit. */
+const uploadsPerHour = Number(process.env.RATE_LIMIT_UPLOADS_PER_HOUR ?? 10);
 
 const storageDir = process.env.STORAGE_DIR ?? join(process.cwd(), 'storage');
 mkdirSync(storageDir, { recursive: true });
@@ -27,6 +31,7 @@ export class JobsController {
   constructor(private readonly jobs: JobsService) {}
 
   @Post()
+  @Throttle({ default: { ttl: 60 * 60 * 1000, limit: uploadsPerHour } })
   @UseInterceptors(FileInterceptor('video', {
     storage: diskStorage({
       destination: storageDir,

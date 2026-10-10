@@ -59,7 +59,7 @@ L'application complète est alors disponible sur http://localhost:3000.
 
 Les messages d'erreur de l'API sont en anglais. Les erreurs que l'interface doit afficher portent en plus un `code` stable (`video_missing`, `video_unreadable`, `video_duration`, `effect_too_late`, `music_unavailable`) et des `params`, que le client web traduit.
 
-Limite par défaut : 250 Mo, configurable avec `MAX_UPLOAD_MB`. La musique est lue depuis `apps/api/assets/music.m4a`, ou depuis le chemin donné par `MUSIC_PATH`. Les fichiers temporaires sont supprimés automatiquement après six heures.
+Limite par défaut : 250 Mo, configurable avec `MAX_UPLOAD_MB`. La musique est lue depuis `apps/api/assets/music.m4a`, ou depuis le chemin donné par `MUSIC_PATH`. Les fichiers temporaires sont supprimés automatiquement après six heures. Par défaut, CORS est désactivé (même origine) : `CORS_ORIGIN` accepte une liste d'origines séparées par des virgules. Limites de débit par IP : `RATE_LIMIT_PER_MINUTE` (300) et `RATE_LIMIT_UPLOADS_PER_HOUR` (10) ; derrière un reverse proxy, définir `TRUST_PROXY` (par exemple `1`). Rendus simultanés : `MAX_CONCURRENT_RENDERS` (1), délai maximal : `RENDER_TIMEOUT_MINUTES` (30).
 
 ## Licence
 
@@ -126,7 +126,7 @@ The full application is then available at http://localhost:3000.
 
 API error messages are in English. Errors the interface needs to display also carry a stable `code` (`video_missing`, `video_unreadable`, `video_duration`, `effect_too_late`, `music_unavailable`) and `params`, which the web client translates.
 
-Default limit: 250 MB, configurable with `MAX_UPLOAD_MB`. Music is read from `apps/api/assets/music.m4a`, or from the path given by `MUSIC_PATH`. Temporary files are deleted automatically after six hours.
+Default limit: 250 MB, configurable with `MAX_UPLOAD_MB`. Music is read from `apps/api/assets/music.m4a`, or from the path given by `MUSIC_PATH`. Temporary files are deleted automatically after six hours. CORS is off by default (same origin): `CORS_ORIGIN` takes a comma-separated list of origins. Per-IP rate limits: `RATE_LIMIT_PER_MINUTE` (300) and `RATE_LIMIT_UPLOADS_PER_HOUR` (10); behind a reverse proxy, set `TRUST_PROXY` (e.g. `1`). Concurrent renders: `MAX_CONCURRENT_RENDERS` (1), render timeout: `RENDER_TIMEOUT_MINUTES` (30).
 
 ### License
 
